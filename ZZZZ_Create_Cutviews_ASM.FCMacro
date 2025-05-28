@@ -1,0 +1,406 @@
+# -*- coding: utf-8 -*-
+"""
+ZZZZ_Create_Cutviews_ASM.FCMacro
+
+This FreeCAD macro automates the creation, management, and deletion of "cut views" for assemblies and parts.
+This macro works with single parts or assemblies.
+It provides a Qt-based dialog for user interaction, allowing users to:
+- Create cut views by selecting a body/assembly and a plane, then specifying a label (Letter for the cut view) and rectangle size (cut cube).
+  (By default, cut faces that are coplanar with the cut plane will be painted dark red.)
+- Delete existing cut-view groups with a dedicated dialog.
+
+The macro is designed for advanced FreeCAD workflows involving assemblies, links, and custom cut planes, 
+and is compatible with both Part and PartDesign workbenches.
+"""
+
+# --- Imports and type definitions ---
+import FreeCAD as App
+import FreeCADGui as Gui
+from PySide import QtCore, QtGui
+import Part
+import Sketcher
+
+# --- Configuration constants ---
+CUTVIEW_LABEL = '*All_Cutviews*---------------------------------'  # Main cutviews group label
+CUTPLANES_LABEL = 'Cut_Planes'                                   # Group for all cut planes
+CUTGROUP_PREFIX = 'Cut_'                                         # Prefix for cut view groups
+CUBE_SUFFIX = '_Cut_Cube'                                        # Suffix for cut cubes
+PLANE_PREFIX = 'Cut_Plane_'                                      # Prefix for cut planes
+PLANE_TYPEIDS = ('Part::DatumPlane', 'PartDesign::Plane')        # Plane object types
+BODY_TYPEIDS = ('PartDesign::Body', 'Part::Feature')             # Body object types
+ASSEMBLY_TYPEIDS = ('App::Part', 'Assembly::AssemblyObject')     # Assembly object types
+LINK_TYPEID = 'App::Link'                                        # Link type
+GROUP_TYPEID = 'App::DocumentObjectGroup'                        # Group type
+RECT_SIZE = 500.0                                                # Default rectangle size (mm)
+ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'                          # For labeling
+DARK_RED = (0.333, 0.0, 0.0)                                     # Coplanar face color dark red
+PLANE_OFFSET = 0.0001                                            # Offset to avoid coplanar issues
+
+# --- Dialog for creating a cut view ---
+class CutViewDialog(QtGui.QDialog):
+    def __init__(self, selected_body, selected_plane, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Create a Cutview")
+        layout = QtGui.QVBoxLayout(self)
+
+        self.bodies = [selected_body]
+        self.planes = [selected_plane]
+
+        doc = App.ActiveDocument
+        used_letters = set()
+        cut_planes_group = next((obj for obj in doc.Objects if obj.TypeId == GROUP_TYPEID and obj.Label == CUTPLANES_LABEL), None)
+        if cut_planes_group:
+            for obj in cut_planes_group.Group:
+                if obj.Label.startswith(PLANE_PREFIX):
+                    letter = obj.Label[len(PLANE_PREFIX):len(PLANE_PREFIX)+1]
+                    if letter in ALPHABET:
+                        used_letters.add(letter)
+        available_letters = [letter for letter in ALPHABET if letter not in used_letters]
+
+        # Letter dropdown first
+        self.letter_combo = QtGui.QComboBox(self)
+        self.letter_combo.addItems(available_letters)
+        layout.addWidget(QtGui.QLabel("Select Letter for Labeling:"))
+        layout.addWidget(self.letter_combo)
+
+        # Rectangle size dropdown second
+        self.rect_size_combo = QtGui.QComboBox(self)
+        self.rect_sizes = [500, 1000, 1500, 2000, 3000, 4000, 5000]
+        self.rect_size_combo.addItems(map(str, self.rect_sizes))
+        layout.addWidget(QtGui.QLabel("Select Rectangle Size (mm):"))
+        layout.addWidget(self.rect_size_combo)
+
+        btn_box = QtGui.QDialogButtonBox(QtGui.QDialogButtonBox.Ok | QtGui.QDialogButtonBox.Cancel)
+        btn_box.accepted.connect(self.accept)
+        btn_box.rejected.connect(self.reject)
+        layout.addWidget(btn_box)
+
+    def getSelections(self):
+        # Return user selections from dialog (body and plane are still passed in for logic, but not selectable)
+        body = self.bodies[0] if self.bodies else None
+        plane = self.planes[0] if self.planes else None
+        rect_size = self.rect_sizes[self.rect_size_combo.currentIndex()]
+        letter = self.letter_combo.currentText()
+        return body, plane, rect_size, letter
+
+# --- Create sublinks for all solids in a body/assembly ---
+def create_sublinks(doc, selected_body, letter=None):
+    solids = []
+    def collect_solids(obj):
+        if obj.TypeId == 'PartDesign::Body':
+            solids.append(obj)
+        elif obj.TypeId == 'Part::Feature' and hasattr(obj, 'Shape') and obj.Shape.Solids:
+            solids.append(obj)
+        elif obj.TypeId == LINK_TYPEID:
+            linked = getattr(obj, 'LinkedObject', None)
+            if isinstance(linked, tuple):
+                for l in linked:
+                    if hasattr(l, 'TypeId') and l.TypeId in BODY_TYPEIDS:
+                        solids.append(obj)
+                        break
+            elif linked and hasattr(linked, 'TypeId') and linked.TypeId in BODY_TYPEIDS:
+                solids.append(obj)
+        elif obj.TypeId in ASSEMBLY_TYPEIDS and hasattr(obj, 'OutList'):
+            for child in obj.OutList:
+                collect_solids(child)
+    if selected_body.TypeId in ASSEMBLY_TYPEIDS and hasattr(selected_body, 'OutList'):
+        for child in selected_body.OutList:
+            collect_solids(child)
+    else:
+        collect_solids(selected_body)
+    if not solids:
+        return []
+    sub_links = []
+    for idx, obj in enumerate(solids):
+        Gui.Selection.clearSelection()
+        Gui.Selection.addSelection(obj)
+        if obj.TypeId == 'PartDesign::Body':
+            Gui.runCommand('Std_LinkMake', 0)
+            obj.ViewObject.Visibility = False
+        else:
+            Gui.runCommand('Std_LinkMakeRelative', 0)
+        sub_link = doc.ActiveObject
+        if sub_link and sub_link.TypeId == LINK_TYPEID:
+            sub_link.Label = f'{letter}{idx+1:03d}_Link_{obj.Label}' if letter else f'Link_{obj.Label}'
+            sub_links.append(sub_link)
+    for obj in doc.Objects:
+        if obj.TypeId == 'Assembly::AssemblyObject' and hasattr(obj, 'ViewObject'):
+            obj.ViewObject.Visibility = False
+    doc.recompute()
+    return sub_links
+
+# --- Create a cut cube (rectangle) on a plane ---
+def create_cut_views_with_rectangle(doc, plane, cube_front_label, is_plane=True, force_letter=None, rect_size=RECT_SIZE):
+    """Create a section view with a centered rectangle on the given plane."""
+    if force_letter:
+        next_letter = force_letter
+    else:
+        existing_labels = [obj.Label for obj in doc.Objects if obj.TypeId == "Part::DatumPlane"]
+        next_letter = next((l for l in ALPHABET if f"{PLANE_PREFIX}{l}" not in existing_labels), None)
+    if not next_letter:
+        QtGui.QMessageBox.critical(None, "Error", "No available letters for plane labels!")
+        doc.abortTransaction()
+        return
+    # Relabel and offset the plane to avoid coplanar issues
+    if plane:
+        plane.Label = f"{PLANE_PREFIX}{next_letter}"
+        normal = plane.Shape.Faces[0].normalAt(0, 0) if hasattr(plane, 'Shape') and plane.Shape.Faces else App.Vector(0, 0, 1)
+        offset_vec = normal.multiply(PLANE_OFFSET)
+        plane.Placement = App.Placement(plane.Placement.Base.add(offset_vec), plane.Placement.Rotation)
+    # Create a new body for the cut cube
+    body_front = doc.addObject('PartDesign::Body', cube_front_label)
+    doc.recompute()
+    try:
+        # Create a centered rectangle sketch on the plane
+        sketch = doc.addObject('Sketcher::SketchObject', 'CenteredRectangle')
+        body_front.addObject(sketch)
+        size = rect_size
+        half = size/2
+        points = [App.Vector(-half, -half, 0), App.Vector(half, -half, 0), App.Vector(half, half, 0), App.Vector(-half, half, 0)]
+        lines = [sketch.addGeometry(Part.LineSegment(points[i], points[(i+1)%4])) for i in range(4)]
+        constraints = [
+            ('Coincident', lines[0], 2, lines[1], 1),
+            ('Coincident', lines[1], 2, lines[2], 1),
+            ('Coincident', lines[2], 2, lines[3], 1),
+            ('Coincident', lines[3], 2, lines[0], 1),
+            ('Horizontal', lines[0]),
+            ('Horizontal', lines[2]),
+            ('Vertical', lines[1]),
+            ('Vertical', lines[3]),
+        ]
+        for c in constraints:
+            sketch.addConstraint(Sketcher.Constraint(*c))
+        sketch.addConstraint(Sketcher.Constraint('DistanceX', lines[0], 1, lines[0], 2, size))
+        sketch.addConstraint(Sketcher.Constraint('DistanceY', lines[1], 1, lines[1], 2, size))
+        sketch.MapMode = 'FlatFace'
+        sketch.AttachmentSupport = [(plane, '')]
+        sketch.AttachmentOffset = App.Placement(App.Vector(0, 0, 0), App.Rotation())
+        doc.recompute()
+        # Pad (extrude) the rectangle to create the cube
+        pad = body_front.newObject('PartDesign::Pad', 'Pad')
+        pad.Profile = sketch
+        pad.Length = size
+        pad.Reversed = False
+        pad.ViewObject.ShapeColor = (1.0, 0.5, 0.5)
+        pad.ViewObject.Transparency = 70
+    except Exception as e:
+        # Abort if rectangle creation fails
+        App.Console.PrintError(f"Failed to create rectangle: {str(e)}\n")
+        doc.abortTransaction()
+        if App.GuiUp:
+            QtGui.QMessageBox.critical(None, "Error", f"Failed to create rectangle:\n{str(e)}")
+        return
+    doc.recompute()
+    doc.commitTransaction()
+
+# --- Perform boolean cut for each sublink/cube pair ---
+def auto_cut_sublinks_and_cubes(doc, sub_links, next_letter, num_cubes):
+    for i in range(num_cubes):
+        sublink_label = f'{next_letter}{i+1:03d}_Link_'
+        cube_label = f'{next_letter}{i+1:03d}{CUBE_SUFFIX}'
+        sublink_obj = next((obj for obj in doc.Objects if obj.Label.startswith(sublink_label)), None)
+        cube_obj = next((obj for obj in doc.Objects if obj.Label == cube_label), None)
+        if sublink_obj and cube_obj:
+            Gui.Selection.clearSelection()
+            Gui.Selection.addSelection(sublink_obj)
+            Gui.Selection.addSelection(cube_obj)
+            Gui.runCommand('Part_Cut', 0)
+            cut_obj = doc.ActiveObject
+            if cut_obj and hasattr(sublink_obj, 'Label'):
+                parts = sublink_obj.Label.split('_Link_', 1)
+                if len(parts) == 2:
+                    cut_label = f"{next_letter}{i+1:03d}_Cut_{parts[1]}"
+                    cut_obj.Label = cut_label
+        else:
+            App.Console.PrintError(f"Could not find sub-link '{sublink_label}...' or cut-cube '{cube_label}' for cut operation.\n")
+
+# --- Dialog for cut group actions (delete/cancel) ---
+class InitialDialog(QtGui.QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Cutview Options")
+        layout = QtGui.QVBoxLayout(self)
+        self.delete_cut_button = QtGui.QPushButton("Delete the Cut-view", self)
+        self.cancel_button = QtGui.QPushButton("Cancel", self)
+        layout.addWidget(self.delete_cut_button)
+        layout.addWidget(self.cancel_button)
+        self.delete_cut_button.clicked.connect(self.delete_cut)
+        self.cancel_button.clicked.connect(self.cancel)
+        self.setFixedWidth(self.width() * 0.3)
+    def delete_cut(self):
+        self.done(2)  # Custom result code for delete
+    def cancel(self):
+        self.done(0)  # Standard rejected
+
+# --- Main macro entry point ---
+def main():
+    doc = App.ActiveDocument
+    if not doc:
+        QtGui.QMessageBox.warning(None, "No Document", "Please open a document before running this macro.")
+        return
+    selection = Gui.Selection.getSelection()
+    # Handle group selection: show dialog for delete/cancel, or proceed to creation dialog
+    if len(selection) == 1 and selection[0].TypeId == GROUP_TYPEID:
+        initial_dialog = InitialDialog()
+        result = initial_dialog.exec()
+        if result == 2:
+            # Delete the cut group and all its contents
+            cut_group = selection[0]
+            expand_in_tree(cut_group)
+            cuts = [obj for obj in cut_group.Group if '_Cut_' in obj.Label]
+            for cut in cuts:
+                expand_in_tree(cut)
+            bodies_links = []
+            def collect_bodies_links(obj, bodies_links):
+                if isinstance(obj, (tuple, list)):
+                    for o in obj:
+                        collect_bodies_links(o, bodies_links)
+                    return
+                if not hasattr(obj, 'TypeId'):
+                    return
+                if obj.TypeId in ['PartDesign::Body', 'App::Link', 'App::SubLink']:
+                    if obj not in bodies_links:
+                        bodies_links.append(obj)
+                if hasattr(obj, 'Group') and obj.Group:
+                    for sub in obj.Group:
+                        collect_bodies_links(sub, bodies_links)
+                if hasattr(obj, 'Base') and obj.Base:
+                    collect_bodies_links(obj.Base, bodies_links)
+                if hasattr(obj, 'Tool') and obj.Tool:
+                    collect_bodies_links(obj.Tool, bodies_links)
+            for cut in cuts:
+                collect_bodies_links(cut, bodies_links)
+            Gui.Selection.clearSelection()
+            for obj in bodies_links + cuts + [cut_group]:
+                Gui.Selection.addSelection(obj)
+            Gui.runCommand('Std_Delete', 0)
+            return
+        elif result == 0:
+            # Cancel pressed: exit macro
+            return
+        # If not delete/cancel, proceed to creation dialog
+        dlg = CutViewDialog(selected_body, selected_plane)
+        if dlg.exec() == QtGui.QDialog.Accepted:
+            body, plane, rect_size, selected_letter = dlg.getSelections()
+            if not body or not plane:
+                QtGui.QMessageBox.information(None, "Selection Error", "If You want to create a Cut-view: Select a plane and one Object.\n \nIf You want to delete a Cut-view: Select a Cute_view-group.")
+                return
+            next_letter = selected_letter
+            if plane:
+                plane.Label = f"{PLANE_PREFIX}{next_letter}"
+            sub_links = create_sublinks(doc, body, letter=next_letter)
+            num_cubes = len(sub_links)
+            for i, sub_link in enumerate(sub_links):
+                cube_label = f"{next_letter}{i+1:03d}{CUBE_SUFFIX}"
+                create_cut_views_with_rectangle(doc, plane, cube_label, is_plane=False, force_letter=next_letter, rect_size=rect_size)
+                cube_obj = next((obj for obj in doc.Objects if obj.Label == cube_label), None)
+                if cube_obj and hasattr(cube_obj, 'ViewObject'):
+                    try:
+                        cube_obj.ViewObject.Selectable = False
+                    except Exception:
+                        pass
+            auto_cut_sublinks_and_cubes(doc, sub_links, next_letter, num_cubes)
+    # Handle body+plane selection: show creation dialog
+    elif len(selection) == 2:
+        selected_body = next((obj for obj in selection if obj.TypeId in ['PartDesign::Body', 'App::Part', 'Assembly::AssemblyObject', 'App::Link', 'App::SubLink']), None)
+        selected_plane = next((obj for obj in selection if obj.TypeId in ['Part::DatumPlane', 'PartDesign::Plane']), None)
+        if not selected_body or not selected_plane:
+            QtGui.QMessageBox.information(None, "Selection Error", "Selection Error", "If You want to create a Cut-view: Select a plane and one Object.\n \nIf You want to delete a Cut-view: Select a Cute_view-group.")
+            return
+        dlg = CutViewDialog(selected_body, selected_plane)
+        if dlg.exec() == QtGui.QDialog.Accepted:
+            body, plane, rect_size, selected_letter = dlg.getSelections()
+            if not body or not plane:
+                QtGui.QMessageBox.information(None, "Selection Error", "Selection Error", "If You want to create a Cut-view: Select a plane and one Object.\n \nIf You want to delete a Cut-view: Select a Cute_view-group.")
+                return
+            next_letter = selected_letter
+            if plane:
+                plane.Label = f"{PLANE_PREFIX}{next_letter}"
+            sub_links = create_sublinks(doc, body, letter=next_letter)
+            num_cubes = len(sub_links)
+            for i, sub_link in enumerate(sub_links):
+                cube_label = f"{next_letter}{i+1:03d}{CUBE_SUFFIX}"
+                create_cut_views_with_rectangle(doc, plane, cube_label, is_plane=False, force_letter=next_letter, rect_size=rect_size)
+                cube_obj = next((obj for obj in doc.Objects if obj.Label == cube_label), None)
+                if cube_obj and hasattr(cube_obj, 'ViewObject'):
+                    try:
+                        cube_obj.ViewObject.Selectable = False
+                    except Exception:
+                        pass
+            auto_cut_sublinks_and_cubes(doc, sub_links, next_letter, num_cubes)
+    # Handle no or invalid selection
+    elif len(selection) == 0:
+        QtGui.QMessageBox.information(None, "Selection Error", "If You want to create a Cut-view: Select a plane and one Object.\n \nIf You want to delete a Cut-view: Select a Cute_view-group.")
+        return
+    else:
+        QtGui.QMessageBox.information(None, "Selection Error", "If You want to create a Cut-view: Select a plane and one Object.\n \nIf You want to delete a Cut-view: Select a Cute_view-group.")
+        return
+    # Grouping and coloring logic for new cutviews
+    if 'sub_links' in locals() and sub_links:
+        all_cutviews_group = next((obj for obj in doc.Objects if obj.TypeId == GROUP_TYPEID and obj.Label == CUTVIEW_LABEL), None)
+        if not all_cutviews_group:
+            all_cutviews_group = doc.addObject(GROUP_TYPEID, 'All_Cutviews')
+            all_cutviews_group.Label = CUTVIEW_LABEL
+        else:
+            all_cutviews_group.Label = CUTVIEW_LABEL
+        cut_planes_group = next((obj for obj in all_cutviews_group.Group if obj.TypeId == GROUP_TYPEID and obj.Label == CUTPLANES_LABEL), None)
+        if not cut_planes_group:
+            cut_planes_group = doc.addObject(GROUP_TYPEID, CUTPLANES_LABEL)
+            all_cutviews_group.addObject(cut_planes_group)
+        for obj in doc.Objects:
+            if obj.TypeId == 'Part::DatumPlane' and obj.Label.startswith(PLANE_PREFIX):
+                if obj not in cut_planes_group.Group:
+                    cut_planes_group.addObject(obj)
+        cut_letter_group_label = f"{CUTGROUP_PREFIX}{next_letter}"
+        cut_letter_group = next((obj for obj in all_cutviews_group.Group if obj.TypeId == GROUP_TYPEID and obj.Label == cut_letter_group_label), None)
+        if not cut_letter_group:
+            cut_letter_group = doc.addObject(GROUP_TYPEID, cut_letter_group_label)
+            all_cutviews_group.addObject(cut_letter_group)
+        for obj in doc.Objects:
+            if obj.Label.startswith(f"{next_letter}") and '_Cut_' in obj.Label and not obj.Label.endswith(CUBE_SUFFIX):
+                if obj not in cut_letter_group.Group:
+                    cut_letter_group.addObject(obj)
+        doc.recompute()
+        def paint_coplanar_faces_in_light_red(cut_object, plane, reversed=False):
+            if hasattr(cut_object, 'Shape') and hasattr(plane, 'Shape') and plane.Shape.Faces:
+                plane_face = plane.Shape.Faces[0]
+                plane_normal = plane_face.normalAt(0, 0)
+                if reversed:
+                    plane_normal = plane_normal.negative()
+                orig_colors = list(getattr(cut_object.ViewObject, 'DiffuseColor', []))
+                if not orig_colors or len(orig_colors) != len(cut_object.Shape.Faces):
+                    orig_colors = [cut_object.ViewObject.ShapeColor] * len(cut_object.Shape.Faces)
+                face_colors = list(orig_colors)
+                for idx, face in enumerate(cut_object.Shape.Faces):
+                    if all(abs(plane_normal.dot(face.normalAt(u, v)) - 1) < 1e-6 for u, v in [(0.5, 0.5)]):
+                        dist = face.distToShape(plane.Shape)[0]
+                        if abs(dist) < 1e-6:
+                            face_colors[idx] = DARK_RED
+                cut_object.ViewObject.DiffuseColor = face_colors
+        if 'cut_letter_group' in locals() and cut_letter_group:
+            for cut_obj in cut_letter_group.Group:
+                paint_coplanar_faces_in_light_red(cut_obj, plane)
+        if 'cut_letter_group' in locals() and cut_letter_group:
+            Gui.Selection.clearSelection()
+            Gui.Selection.addSelection(cut_letter_group)
+    # --- Utility: expand an object in the tree view by label ---
+def expand_in_tree(obj):
+    mw = Gui.getMainWindow()
+    tree = mw.findChild(QtGui.QTreeView)
+    if tree:
+        model = tree.model()
+        def find_and_expand(parent_index=QtCore.QModelIndex()):
+            for row in range(model.rowCount(parent_index)):
+                index = model.index(row, 0, parent_index)
+                if hasattr(model, 'data') and model.data(index) == obj.Label:
+                    tree.expand(index)
+                    return True
+                if find_and_expand(index):
+                    return True
+            return False
+        find_and_expand()
+
+if __name__ == "__main__":
+    main()
+
+
