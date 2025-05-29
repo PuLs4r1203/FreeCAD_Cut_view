@@ -15,6 +15,8 @@ It is designed for advanced workflows, supporting both single parts and complex 
   - assemblies or
   - parts/links in assemblies
 
+> ![Overview of a cutview with the automaticaly created tree for the Cut-views](images/Overview_01.png)
+
 ---
 
 ## How to Use
@@ -31,7 +33,6 @@ It is designed for advanced workflows, supporting both single parts and complex 
     
   - only select an existing cutview group to delete it.
 
-> ![Create a plane](images/Create_Plane_01.png)
 > ![Select a body and a plane](images/select_01.png)
 > ![Select an assambly and a plane](images/select_02.png)
 > ![Select a body inside of an assambly and a plane](images/select_03.png)
