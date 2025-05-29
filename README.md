@@ -1,22 +1,19 @@
 # FreeCAD Macro: Create Cutviews for Assemblies and Parts
 
-This FreeCAD macro automates the creation, management, and deletion of "cut views" for assemblies and parts.  
-It is designed for advanced workflows, supporting both single parts and complex assemblies (including links and nested structures).  
-**Compatible with both the Part and PartDesign workbenches.**
-
----
-
-> 🇩🇪 [German version](README.de.md)
+This FreeCAD macro automates the creation, management, and deletion of "cut views" for parts and assemblies.  
+It is designed for advanced workflows, supporting both single parts and complex assemblies.
 
 ---
 
 ## Features
 
 - **Automatic creation of cut views** for single bodies or entire assemblies
-- **Qt-based user dialog** for easy interaction (choose section letter and rectangle size)
+- **Qt-based user dialog** for easy interaction (choose section letter and cut-cube-size)
 - **Delete existing cut-view groups** using a dedicated dialog
-- Works with both simple parts and nested assemblies (with Links)
-- Supports both **Part** and **PartDesign** objects
+- Works with:
+  - simple parts or
+  - assemblies or
+  - parts/links in assemblies
 
 ---
 
@@ -24,27 +21,36 @@ It is designed for advanced workflows, supporting both single parts and complex 
 
 ### 1. Preparation
 
-- Open your desired FreeCAD document.
-- Select either:
-  - a body or assembly **and** a cutting plane to create a new cut view, or
-  - an existing cutview group to delete it.
+- Open a FreeCAD document.
+  - create a plane with the exact command "Part_DatumPlane".
+  - select a single body **and** a cutting plane to create a new cut view or
+  - select an assembly **and** a cutting plane to create a new cut view or
+  - select a body/link inside an assembly **and** a cutting plane to create a new cut view.
 
-> **MARKER_IMAGE1**  
-> *(Insert screenshot of initial selection here)*
+    or
+    
+  - only select an existing cutview group to delete it.
+
+> ![Create a plane](images/Create_Plane_01.png)
+> ![Select a body and a plane](images/select_01.png)
+> ![Select an assambly and a plane](images/select_02.png)
+> ![Select a body inside of an assambly and a plane](images/select_03.png)
 
 ---
 
 ### 2. Creating a New Cut View
 
 1. **Select object and plane:**  
-   In the model tree, select a body/assembly and an existing plane (DatumPlane/Plane).
+   In the model tree, select a body/assembly and an existing plane.
 2. **Run the macro:**  
-   A dialog will appear. Choose a letter for the section label and the rectangle size (for the cut cube).
-3. **Confirm your choices:**  
-   The macro will automatically generate sub-links and the corresponding cut cubes, and perform the cutting operation.
+   A dialog will appear. Choose a letter for the section label and the cut_cube size
+   (if your assambly is bigger, than choose a bigger size).
+4. **Confirm your choices:**  
+   The macro will automatically generate links/sub-links and the corresponding cut_cubes, and perform the cutting operation.
 
-> **MARKER_IMAGE2**  
-> *(Insert screenshot of the dialog here)*
+> ![Select a body and a plane](images/select_01.png)
+> ![Select an assambly and a plane](images/select_02.png)
+> ![Select a body inside of an assambly and a plane](images/select_03.png)
 
 ---
 
@@ -54,8 +60,7 @@ It is designed for advanced workflows, supporting both single parts and complex 
 - Run the macro again.  
   A dialog will open, giving you the option to delete the entire group.
 
-> **MARKER_IMAGE3**  
-> *(Insert screenshot of delete dialog here)*
+> ![Select a cut_view_[Letter]-group](images/select_04.png)
 
 ---
 
@@ -65,8 +70,7 @@ It is designed for advanced workflows, supporting both single parts and complex 
 - Objects are automatically grouped under main and subgroups for clarity.
 - Works with both individual parts and complex assemblies with nested structures and links.
 
-> **MARKER_IMAGE4**  
-> *(Insert screenshot of a finished cut view here)*
+> ![Cutted faces in "dark red"](images/Cut_face_01.png)
 
 ---
 
@@ -79,15 +83,13 @@ It is designed for advanced workflows, supporting both single parts and complex 
 
 ## Requirements
 
-- FreeCAD (latest version recommended)
+- FreeCAD (1.1dev+)
 - Part and/or PartDesign workbenches enabled
-- For assemblies: an assembly workbench (A2plus, Assembly3, etc.) if required
+- For assemblies: Internal assembly workbench if required
 
 ---
 
 ## License
-
-This macro is provided under the MIT license.
 
 ---
 
