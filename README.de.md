@@ -1,96 +1,98 @@
-# FreeCAD Makro: Schnittansichten (Cutviews) für Baugruppen und Teile
+# FreeCAD Macro: Create Cutviews for Assemblies and Parts
 
-Dieses FreeCAD-Makro automatisiert das Erstellen, Verwalten und Löschen von Schnittansichten ("Cutviews") für Baugruppen und Einzelteile.  
-Es richtet sich an fortgeschrittene Anwender und unterstützt sowohl Einzelteile als auch komplexe Baugruppen mit Links und verschachtelten Strukturen.  
-**Kompatibel mit der Part- und PartDesign-Workbench.**
-
----
-
-> 🇬🇧 [English description here (Englische Version)](README.md)
+This FreeCAD macro automates the creation, management, and deletion of "cut views" for parts and assemblies.  
+It is designed for advanced workflows, supporting both single parts and complex assemblies.
 
 ---
 
-## Funktionen
+## Features
 
-- **Automatisches Erstellen von Schnittansichten** für einzelne Körper oder ganze Baugruppen
-- **Qt-basierter Benutzerdialog** für einfache Bedienung (Schnitt-Buchstabe und Rechteckgröße wählbar)
-- **Löschen bestehender Cutview-Gruppen** über einen eigenen Dialog
-- Funktioniert sowohl mit einfachen Teilen als auch mit verschachtelten Assemblies (inkl. Links)
-- Unterstützt **Part**- und **PartDesign**-Objekte
-
----
-
-## Anwendung
-
-### 1. Vorbereitung
-
-- Öffne das gewünschte FreeCAD-Dokument.
-- Wähle entweder:
-  - einen Körper oder eine Baugruppe **und** eine Schnittebene, um eine neue Schnittansicht zu erstellen, oder
-  - eine bestehende Cutview-Gruppe, um sie zu löschen.
-
-> **MARKER_BILD1**  
-> *(Hier Screenshot vom Auswahlzustand einfügen)*
+- **Automatic creation of cut views** for single bodies or entire assemblies
+- **Qt-based user dialog** for easy interaction (choose section letter and cut-cube-size)
+- **Delete existing cut-view groups** using a dedicated dialog
+- Works with:
+  - simple parts or
+  - assemblies or
+  - parts/links in assemblies
 
 ---
 
-### 2. Neue Schnittansicht erstellen
+## How to Use
 
-1. **Objekt und Ebene auswählen:**  
-   Wähle im Baum einen Körper/Baugruppe und eine vorhandene Ebene (DatumPlane/Plane) aus.
-2. **Makro ausführen:**  
-   Ein Dialog erscheint. Wähle den Buchstaben für die Beschriftung und die Rechteckgröße (für den Schnittwürfel).
-3. **Bestätigen:**  
-   Das Makro erstellt automatisch Unter-Links und die zugehörigen Schnittwürfel und führt den Schnitt aus.
+### 1. Preparation
 
-> **MARKER_BILD2**  
-> *(Hier Screenshot des Dialogs einfügen)*
+- Open a FreeCAD document.
+  - create a plane with the exact command "Part_DatumPlane".
+  - select a single body **and** a cutting plane to create a new cut view or
+  - select an assembly **and** a cutting plane to create a new cut view or
+  - select a body/link inside an assembly **and** a cutting plane to create a new cut view.
 
----
+    or
+    
+  - only select an existing cutview group to delete it.
 
-### 3. Bestehende Cutview löschen
-
-- Wähle im Baum eine Gruppe aus, deren Name mit `Cut_` beginnt (z.B. `Cut_A`).
-- Führe das Makro erneut aus.  
-  Ein Dialog öffnet sich, in dem das Löschen der gesamten Gruppe möglich ist.
-
-> **MARKER_BILD3**  
-> *(Hier Screenshot des Lösch-Dialogs einfügen)*
+> ![Create a plane](images/Create_Plane_01.png)
+> ![Select a body and a plane](images/select_01.png)
+> ![Select an assambly and a plane](images/select_02.png)
+> ![Select a body inside of an assambly and a plane](images/select_03.png)
 
 ---
 
-## Hinweise & Tipps
+### 2. Creating a New Cut View
 
-- Koplanare Flächen an der Schnittstelle werden **dunkelrot hervorgehoben** für bessere Sichtbarkeit.
-- Die Gruppierung der Objekte erfolgt automatisch in Haupt- und Untergruppen.
-- Funktioniert mit Einzelteilen und komplexen Baugruppen mit verschachtelten Strukturen und Links.
+1. **Select object and plane:**  
+   In the model tree, select a body/assembly and an existing plane.
+2. **Run the macro:**  
+   A dialog will appear. Choose a letter for the section label and the cut_cube size
+   (if your assambly is bigger, than choose a bigger size).
+4. **Confirm your choices:**  
+   The macro will automatically generate links/sub-links and the corresponding cut_cubes, and perform the cutting operation.
 
-> **MARKER_BILD4**  
-> *(Hier Screenshot einer fertig erzeugten Schnittansicht einfügen)*
+> ![Select a body and a plane](images/select_01.png)
+> ![Select an assambly and a plane](images/select_02.png)
+> ![Select a body inside of an assambly and a plane](images/select_03.png)
+
+---
+
+### 3. Deleting an Existing Cutview
+
+- Select a group in the model tree whose name starts with `Cut_` (e.g., `Cut_A`).
+- Run the macro again.  
+  A dialog will open, giving you the option to delete the entire group.
+
+> ![Select a cut_view_[Letter]-group](images/select_04.png)
+
+---
+
+## Notes & Tips
+
+- Coplanar faces at the cut will be **highlighted in dark red** to improve visibility.
+- Objects are automatically grouped under main and subgroups for clarity.
+- Works with both individual parts and complex assemblies with nested structures and links.
+
+> ![Cutted faces in "dark red"](images/Cut_face_01.png)
 
 ---
 
 ## Installation
 
-1. Die Datei `ZZZZ_Create_Cutviews_ASM.FCMacro` in den Makro-Ordner von FreeCAD kopieren.
-2. FreeCAD starten und das Makro über die Makro-Verwaltung ausführen.
+1. Copy `ZZZZ_Create_Cutviews_ASM.FCMacro` into your FreeCAD macros folder.
+2. Start FreeCAD and execute the macro via the Macro Manager.
 
 ---
 
-## Voraussetzungen
+## Requirements
 
-- FreeCAD (aktuelle Version empfohlen)
-- Part- und/oder PartDesign-Workbench aktiviert
-- Für Baugruppen ggf. eine Assembly-Workbench (A2plus, Assembly3, etc.)
-
----
-
-## Lizenz
-
-Dieses Makro steht unter der MIT-Lizenz.
+- FreeCAD (1.1dev+)
+- Part and/or PartDesign workbenches enabled
+- For assemblies: Internal assembly workbench if required
 
 ---
 
-## Support / Fragen
+## License
 
-Bei Problemen oder Verbesserungsvorschlägen bitte ein Issue im [GitHub-Repository](https://github.com/PuLs4r1203/FreeCAD_Cut_view) eröffnen.
+---
+
+## Support / Questions
+
+For issues or suggestions, please open an issue in the [GitHub repository](https://github.com/PuLs4r1203/FreeCAD_Cut_view).
