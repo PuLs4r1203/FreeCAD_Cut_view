@@ -2,7 +2,14 @@
 
 This FreeCAD macro automates the creation, management, and deletion of "cut views" for parts and assemblies.  
 It is designed for advanced workflows, supporting both single parts and complex assemblies.
-
+- The macro creates "cut views" while preserving the original colors of the original bodys.
+- Coplanar faces at the cut will be **highlighted in dark red** to improve visibility.
+- Objects are automatically grouped under main and subgroups for clarity (User can choose a Letter in Dropdown).
+  - *All_Cutviews*
+    - Cut_A
+    - Cut_B
+    - Cut_C
+    - .......
 ---
 
 ## Features
@@ -15,7 +22,8 @@ It is designed for advanced workflows, supporting both single parts and complex 
   - assemblies or
   - parts/links in assemblies
 
-> ![Overview of a cutview with the automaticaly created tree for the Cut-views](images/Overview_01.png)
+<img src="images/Overview_01.png" width="1100" alt="Overview of a cutview with the automaticaly created tree for the Cut-views"/>
+- Overview of a cutview with the automaticaly created tree for the Cut-views and dar-red colored cutfaces
 
 ---
 
@@ -32,11 +40,7 @@ It is designed for advanced workflows, supporting both single parts and complex 
     or
     
   - only select an existing cutview group to delete it.
-
-> ![Select a body and a plane](images/select_01.png)
-> ![Select an assambly and a plane](images/select_02.png)
-> ![Select a body inside of an assambly and a plane](images/select_03.png)
-
+ 
 ---
 
 ### 2. Creating a New Cut View
@@ -49,9 +53,32 @@ It is designed for advanced workflows, supporting both single parts and complex 
 4. **Confirm your choices:**  
    The macro will automatically generate links/sub-links and the corresponding cut_cubes, and perform the cutting operation.
 
-> ![Select a body and a plane](images/select_01.png)
-> ![Select an assambly and a plane](images/select_02.png)
-> ![Select a body inside of an assambly and a plane](images/select_03.png)
+
+<img src="images/select_01.png" width="1100" alt="Select a body and a plane"/>
+- Select a body and a plane
+<br> 
+<br> 
+<br>
+<br> 
+<br> 
+<br> 
+<img src="images/select_02.png" width="1100" alt="Select an assambly and a plane"/>
+- Select an assambly and a plane
+<br> 
+<br> 
+<br>
+<br> 
+<br> 
+<br> 
+<img src="images/select_03.png" width="1100" alt="Select a body inside of an assambly and a plane"/>
+- Select a body inside of an assambly and a plane
+<br> 
+<br> 
+<br>
+<br> 
+<br> 
+<br>
+<img src="images/Qt-Dialog_create_01.png" width="1100" alt="QT-Dialog-window to create a cutview"/>
 
 ---
 
@@ -61,17 +88,17 @@ It is designed for advanced workflows, supporting both single parts and complex 
 - Run the macro again.  
   A dialog will open, giving you the option to delete the entire group.
 
-> ![Select a cut_view_[Letter]-group](images/select_04.png)
+<img src="images/select_04.png" width="1100" alt="Select a cut_view_[Letter]-group"/>
+- Select a cut_[Letter]-group and run the macro again to delete a cutview
 
 ---
 
 ## Notes & Tips
 
+- The macro creates "cut views" while preserving the original colors of the original bodys.
 - Coplanar faces at the cut will be **highlighted in dark red** to improve visibility.
 - Objects are automatically grouped under main and subgroups for clarity.
 - Works with both individual parts and complex assemblies with nested structures and links.
-
-> ![Cutted faces in "dark red"](images/Cut_face_01.png)
 
 ---
 
