@@ -10,6 +10,7 @@ It is designed for advanced workflows, supporting both single parts and complex 
     - Cut_B
     - Cut_C
     - .......
+
 ---
 
 ## Features
@@ -54,32 +55,38 @@ It is designed for advanced workflows, supporting both single parts and complex 
    The macro will automatically generate links/sub-links and the corresponding cut_cubes, and perform the cutting operation.
 
 
-<img src="images/select_01.png" width="1100" alt="Select a body and a plane"/>
-- Select a body and a plane
+<img src="images/select_01.png" width="500" alt="Select a body and a plane"/>      <img src="images/Qt-Dialog_create_01.png" width="400" alt="QT-Dialog-window to create a cutview"/> 
+  - Select a body and a plane
+  - run the macro
+  - QT-Dialog-window pops up to create a cutview
 <br> 
 <br> 
 <br>
 <br> 
 <br> 
 <br> 
-<img src="images/select_02.png" width="1100" alt="Select an assambly and a plane"/>
-- Select an assambly and a plane
+<img src="images/select_02.png" width="1100" alt="Select an assambly and a plane"/> 
+  - Select an assambly and a plane
+  - run the macro
+  - QT-Dialog-window pops up to create a cutview
 <br> 
 <br> 
 <br>
 <br> 
 <br> 
 <br> 
-<img src="images/select_03.png" width="1100" alt="Select a body inside of an assambly and a plane"/>
-- Select a body inside of an assambly and a plane
-<br> 
-<br> 
-<br>
-<br> 
-<br> 
-<br>
-<img src="images/Qt-Dialog_create_01.png" width="1100" alt="QT-Dialog-window to create a cutview"/>
+<img src="images/select_03.png" width="1100" alt="Select a body inside of an assambly and a plane"/> 
+  - Select a body inside of an assambly and a plane
+  - run the macro
+  - QT-Dialog-window pops up to create a cutview
+ 
+---
 
+### 2. Toggle the visibility
+
+  - select e.g. the "Cut_A"-group (it looks like a Folder) and push "space", than
+  - select the body/assembly and push "space".
+ 
 ---
 
 ### 3. Deleting an Existing Cutview
@@ -89,7 +96,6 @@ It is designed for advanced workflows, supporting both single parts and complex 
   A dialog will open, giving you the option to delete the entire group.
 
 <img src="images/select_04.png" width="1100" alt="Select a cut_view_[Letter]-group"/>
-- Select a cut_[Letter]-group and run the macro again to delete a cutview
 
 ---
 
