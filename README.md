@@ -11,7 +11,7 @@ It is designed for advanced workflows, supporting both single parts and complex 
     - Cut_C
     - .......
 
----
+<img src="images/Overview_01_new.png" width="100%" alt="Overview of a cutview"/>
 
 ## Features
 
@@ -27,7 +27,6 @@ It is designed for advanced workflows, supporting both single parts and complex 
 
 - Overview of a cutview with the automaticaly created tree for the Cut-views and dar-red colored cutfaces
 
----
 
 ## How to Use
 
@@ -43,7 +42,6 @@ It is designed for advanced workflows, supporting both single parts and complex 
     
   - only select an existing cutview group to delete it.
  
----
 
 ### 2. Creating a New Cut View
 
@@ -77,14 +75,12 @@ Examples:
   - run the macro
   - QT-Dialog-window pops up to create a cutview
  
----
 
 ### 2. Toggle the visibility
 
   - select e.g. the "Cut_A"-group (it looks like a Folder) and push "space", than
   - select the body/assembly and push "space".
  
----
 
 ### 3. Deleting an Existing Cutview
 
@@ -94,7 +90,6 @@ Examples:
 
 <img src="images/select_04.png" width="1100" alt="Select a cut_view_[Letter]-group"/>
 
----
 
 ## Notes & Tips
 
@@ -103,14 +98,12 @@ Examples:
 - Objects are automatically grouped under main and subgroups for clarity.
 - Works with both individual parts and complex assemblies with nested structures and links.
 
----
 
 ## Installation
 
 1. Copy `ZZZZ_Create_Cutviews_ASM.FCMacro` into your FreeCAD macros folder.
 2. Start FreeCAD and execute the macro via the Macro Manager.
 
----
 
 ## Requirements
 
@@ -118,11 +111,9 @@ Examples:
 - Part and/or PartDesign workbenches enabled
 - For assemblies: Internal assembly workbench if required
 
----
 
 ## License
 
----
 
 ## Support / Questions
 
